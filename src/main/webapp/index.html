@@ -1,281 +1,294 @@
 <html>
-<head>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-</head>
-<body>
-	<div align="center">
-		<h1> Welcome to Mendeley Insights!! </h1>
-		<hr/>
-	</div>
-	
-	<div align="left">
-		<h3> Personal Information </h3>
-		
-		<table>
-			<tr>
-				<td>Name:</td>
-				<td id="name"></td>
-			</tr>
-			<tr>
-				<td>Surname:</td>
-				<td id="surname"></td>
-			</tr>
-			<tr>
-				<td>Bio:</td>
-				<td id="bio"></td>
-			</tr>
-		</table>
-		<br>
-		<hr/>
-	</div>
-	
-	<div align="left">
-		<h3> Education </h3>
-		<table>
-			<thead>
-				<tr style="font-weight: bold;">
-					<td>Start Date</td>
-					<td>End Date</td>
-					<td>Degree</td>
-					<td>Institution</td>
-				</tr>
-			</thead>
-			<tbody id="edu-tab">
-			
-			</tbody>
-		</table>		
-		<br>
-		<hr/>
-	</div>
-	
-	<script>
-	
-		// Global variables for authorization
-		var authorized = false;
-		var code = "";
-		var token = "";
-		var auth_resp = {};
 
-		/*
-		 * This function is executed when the window loads 
-		 */
-		window.onload = function() {
+	<head>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	</head>
+	<body>
+		<!-- Welcome Message Banner -->
+		<div align="center">
+			<h1> Welcome to Mendeley Insights!! </h1>
+			<hr/>
+		</div>
+		
+		<!-- Personal Info Section -->
+		<div align="left">
+			<h3> Personal Information </h3>
 			
-			// 1. Check if there was a page reload
-			var reloaded = sessionStorage.getItem("reloaded");
-			console.log("reloaded: " + reloaded);
-			
-			if (reloaded == "true") {
-				alert("RELOADED");
-				authorized = sessionStorage.getItem("authorized");
-				authorized = (authorized == 'true');
-				code = sessionStorage.getItem("code");
-				token = sessionStorage.getItem("token");
-				auth_resp = sessionStorage.getItem("auth_resp");
-				auth_resp = JSON.parse(auth_resp);
+			<table>
+				<tr>
+					<td>Name:</td>
+					<td id="name"></td>
+				</tr>
+				<tr>
+					<td>Surname:</td>
+					<td id="surname"></td>
+				</tr>
+				<tr>
+					<td>Bio:</td>
+					<td id="bio"></td>
+				</tr>
+			</table>
+			<br>
+			<hr/>
+		</div>
+		
+		<!-- Education Section -->
+		<div align="left">
+			<h3> Education </h3>
+			<table>
+				<thead>
+					<tr style="font-weight: bold;">
+						<td>Start Date</td>
+						<td>End Date</td>
+						<td>Degree</td>
+						<td>Institution</td>
+					</tr>
+				</thead>
+				<tbody id="edu-tab">
+				
+				</tbody>
+			</table>		
+			<br>
+			<hr/>
+		</div>
+		
+		<!-- The script that adds functionality to the web page -->
+		<script>
+		
+			// Global variables for authorization
+			var authorized = false;
+			var code = "";
+			var token = "";
+			var auth_resp = {};
+
+			/**
+			 * This function is executed when the window loads 
+			 */
+			window.onload = function() {
+				
+				// 1. Check if there was a page reload
+				var reloaded = sessionStorage.getItem("reloaded");
+				
+				if (reloaded == "true") {
+					// If there was a page reload retrieve the user authorization data
+					authorized = sessionStorage.getItem("authorized");
+					authorized = (authorized == 'true');
+					code = sessionStorage.getItem("code");
+					token = sessionStorage.getItem("token");
+					auth_resp = sessionStorage.getItem("auth_resp");
+					auth_resp = JSON.parse(auth_resp);
+				}
+				
+				// 2. Check if the user is authorized
+				if (!authorized) {
+					checkTheAuthCode();
+				} else {
+					alert("You Can Use The API!!!!");
+					
+					// Update the page view with the provided services
+					getThePersonalInfo();
+				}
 			}
 			
-			// 2. Check if the user is authorized
-			if (!authorized) {
-				checkTheAuthCode();
-			} else {
-				alert("You Can Use The API!!!!");
-				getThePersonalInfo();
-			}
-		}
+			/**
+			 *	This function is called when a page reload is attempted
+			 *  in order to store the credentials of the user, so that 
+			 *  reauthorization will not be needed.
+			 */
+			window.onbeforeunload = function() {
+				sessionStorage.setItem("authorized", authorized + "");
+				sessionStorage.setItem("code", code);
+				sessionStorage.setItem("token", token);
+				sessionStorage.setItem("auth_resp", JSON.stringify(auth_resp));
+				sessionStorage.setItem("reloaded", "true");
 		
-		window.onbeforeunload = function() {
-			alert("STORING STAFF");
-			// Store everything into Session Storage
-			sessionStorage.setItem("authorized", authorized + "");
-			sessionStorage.setItem("code", code);
-			sessionStorage.setItem("token", token);
-			sessionStorage.setItem("auth_resp", JSON.stringify(auth_resp));
-			sessionStorage.setItem("reloaded", "true");
-	
-		}
-		
-		/**
-		 * This method is called only when the user is not authorized 
-		 * in order to get the code and update the flag.
-		 */
-		function checkTheAuthCode() {
-		
-			//1. Get the URL String
-			var urlString = window.location.href;
-			
-			//2. Extract the authorization code
-			var url = new URL(urlString);
-			code = url.searchParams.get("code");
-			
-			//3. Exchange the code
-			console.log(code);
-			
-			if (code == null) {
-				// 1. Inform the user that authorization is required
-				alert("You need to get authorization via Mendeley in order to use this application.");
-				
-				// 2. Define that the user is not authorized
-				authorized = false;
-				
-				// 3. Redirect the user to the authorization page
-				mendeleyAuthFlow();
-			} else {
-				// 1. Inform the user that he was successfully authorized
-				alert("AUTHORIZED!!!!");
-				
-				// 2. Get the token 
-				retrieveToken();
-				
-				// 3. Update the flag
-				authorized = true;
-				
-				// 4. Update
-				getThePersonalInfo();
-			}
-		}
-		
-		function retrieveToken() {
-			// 0. Prepare the parameters
-			var data = {
-				"grant_type":"authorization_code",
-				"code":code,
-				"redirect_uri":"http://localhost:8080/MendeleyInsights/"
-			};
-			
-			var params = $.param(data);
-			console.log(params);
-			
-			// 1. Send a request to mendeley
-			$.ajax
-			({
-			  type: "POST",
-			  url: "https://api.mendeley.com/oauth/token",
-			  async: false,
-			  headers: {
-				"Authorization": "Basic " + btoa("4567" + ":" + "Ue3y2UxrtKNnRDQj"),
-				"Content-Type": "application/x-www-form-urlencoded"
-			  },
-			  data: params,
-			  success: function (response){
-				alert('Successful comunication! Access Token received!!'); 
-				auth_resp = response;
-				token = response["access_token"];
-			  }
-			});
-		}
-		
-		/**
-		 * A method that redirects the user to the Mendeley OAuth service, 
-		 * in order to authorize their account to use the application.
-		 */
-		function mendeleyAuthFlow() {
-			//1. Construct the Mendeley OAuth authorization service URL
-			var url = "https://api.mendeley.com/oauth/authorize?client_id=4567&redirect_uri=http://localhost:8080/MendeleyInsights/&response_type=code&scope=all";
-			
-			//2. Redirect the user to the OAuth service page
-			window.location.href = url;
-		}
-		
-		/**
-		 *	The token expires every one hour. Hence, we schedule a token
-		 *  refresh every 50 minutes, so that the user will not be distracted.
-		 */
-		function updateToken() {
-			console.log("Changing Token");
-			// 0. Prepare the parameters
-			var data = {
-				"grant_type":"refresh_token",
-				"refresh_token":auth_resp["refresh_token"],
-				"redirect_uri":"http://localhost:8080/MendeleyInsights/"
-			};
-			
-			var params = $.param(data);
-			console.log(params);
-			
-			// 1. Send a request to mendeley
-			$.ajax
-			({
-			  type: "POST",
-			  url: "https://api.mendeley.com/oauth/token",
-			  async: false,
-			  headers: {
-				"Authorization": "Basic " + btoa("4567" + ":" + "Ue3y2UxrtKNnRDQj"),
-				"Content-Type": "application/x-www-form-urlencoded"
-			  },
-			  data: params,
-			  success: function (response){
-				alert('Successful comunication! Access Token received!!'); 
-				auth_resp = response;
-				token = response["access_token"];
-			  }
-			});	
-		}
-		
-		window.setInterval(updateToken, 3400000);
-		//window.setInterval(function(){console.log("Hello World")}, 5000);
-		
-		
-		
-		
-		///////////////////////////////////////////////////////////////////////////////////////////////
-		// Usage of the API - Mendeley API Requests
-		///////////////////////////////////////////////////////////////////////////////////////////////
-		
-		/**
-		 *	This function is responsible for retrieving the 
-		 *  personal details the connected authorized user.
-		 */ 
-		function getThePersonalInfo() {
-			$.ajax
-			({
-			  type: "GET",
-			  url: "https://api.mendeley.com/profiles/me",
-			  async: false,
-			  headers: {
-				"Authorization": "Bearer " + token,
-			  },
-			  success: function (response){
-				alert('Successful comunication! Profile Details successfully received!!'); 
-				details = response;
-				updatePersonalInfoArea();
-			  }
-			});
-		}
-		
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		// Functions for updating the GUI (DOM Tree Manipulation)
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		/**
-		 * This function is responsible for updating the personal
-		 * information area of the website with the personal information 
-		 * of the authorized user.
-		 */
-		function updatePersonalInfoArea() {
-			$("#name").html(details["first_name"]);
-			$("#surname").html(details["last_name"]);
-			$("#bio").html(details["biography"]);
-			
-			var education = details["education"];
-			var innerHTML = "";
-			
-			for (var i = 0; i < education.length; i++) {
-				var entry = education[i];
-				
-				var tableEntry = "<tr>" +
-									"<td>" + entry["start_date"] + "</td>" +
-									"<td>" + entry["end_date"] + "</td>" +
-									"<td>" + entry["degree"] + "</td>" +
-									"<td>" + entry["institution"] + "</td>" +
-								"</tr>";
-								
-				innerHTML += tableEntry;
 			}
 			
-			document.getElementById("edu-tab").innerHTML = innerHTML;
-		}
-		
-	</script>
-</body>
+			/**
+			 * This method is called only when the user is not authorized 
+			 * in order to get the code and update the authorization flag.
+			 */
+			function checkTheAuthCode() {
+			
+				//1. Get the URL String
+				var urlString = window.location.href;
+				
+				//2. Extract the authorization code
+				var url = new URL(urlString);
+				code = url.searchParams.get("code");
+				
+				//3. Check if the code exists and exchange it
+				if (code == null) {
+					// 1. Inform the user that authorization is required
+					alert("You need to get authorization via Mendeley in order to use this application.");
+					
+					// 2. Define that the user is not authorized
+					authorized = false;
+					
+					// 3. Redirect the user to the authorization page
+					mendeleyAuthFlow();
+				} else {
+					// 1. Inform the user that he was successfully authorized
+					alert("Congratulations! We were able to verify your account!\n\nReceiving the token ...");
+					
+					// 2. Get the token 
+					retrieveToken();
+					
+					// 3. Update the flag
+					authorized = true;
+					
+					// 4. Update
+					getThePersonalInfo();
+				}
+			}
+			
+			/**
+			 *	This function is responsible for receiving the access token
+			 *  from Mendeley OAuth API in order to be used by the system
+			 *  to call services.
+			 */
+			function retrieveToken() {
+			
+				// 0. Prepare the parameters
+				var data = {
+					"grant_type":"authorization_code",
+					"code":code,
+					"redirect_uri":"http://localhost:8080/MendeleyInsights/"
+				};
+				
+				// 1. Serialize the parameters
+				var params = $.param(data);
+				
+				// 1. Send a request to mendeley
+				$.ajax
+				({
+				  type: "POST",
+				  url: "https://api.mendeley.com/oauth/token",
+				  async: false,
+				  headers: {
+					"Authorization": "Basic " + btoa("4567" + ":" + "Ue3y2UxrtKNnRDQj"),
+					"Content-Type": "application/x-www-form-urlencoded"
+				  },
+				  data: params,
+				  success: function (response){
+					alert('Successful comunication! Access Token received!!'); 
+					auth_resp = response;
+					token = response["access_token"];
+				  }
+				});
+			}
+			
+			/**
+			 *  A method that redirects the user to the Mendeley OAuth service, 
+			 *  in order to authorize their account to use the application.
+			 */
+			function mendeleyAuthFlow() {
+				//1. Construct the Mendeley OAuth authorization service URL (through Postman)
+				var url = "https://api.mendeley.com/oauth/authorize?client_id=4567&redirect_uri=http://localhost:8080/MendeleyInsights/&response_type=code&scope=all";
+				
+				//2. Redirect the user to the OAuth service page
+				window.location.href = url;
+			}
+			
+			/**
+			 *	The token expires every one hour. Hence, we schedule a token
+			 *  refresh every 50 minutes, so that the user will not be distracted.
+			 */
+			function updateToken() {
+			
+				console.log("Refreshing the Access Token ...");
+				
+				// 0. Prepare the parameters
+				var data = {
+					"grant_type":"refresh_token",
+					"refresh_token":auth_resp["refresh_token"],
+					"redirect_uri":"http://localhost:8080/MendeleyInsights/"
+				};
+				
+				// 1. Serialize the parameters
+				var params = $.param(data);
+				
+				// 1. Send a request to Mendeley
+				$.ajax
+				({
+				  type: "POST",
+				  url: "https://api.mendeley.com/oauth/token",
+				  async: false,
+				  headers: {
+					"Authorization": "Basic " + btoa("4567" + ":" + "Ue3y2UxrtKNnRDQj"),
+					"Content-Type": "application/x-www-form-urlencoded"
+				  },
+				  data: params,
+				  success: function (response){
+					alert('Successful comunication! Access Token received!!'); 
+					auth_resp = response;
+					token = response["access_token"];
+				  }
+				});	
+			}
+			
+			window.setInterval(updateToken, 3400000);
+			//window.setInterval(function(){console.log("Hello World")}, 5000);
+			
+			
+			///////////////////////////////////////////////////////////////////////////////////////////////
+			// Usage of the API - Mendeley API Requests
+			///////////////////////////////////////////////////////////////////////////////////////////////
+			
+			/**
+			 *	This function is responsible for retrieving the 
+			 *  personal details the connected authorized user.
+			 */ 
+			function getThePersonalInfo() {
+				$.ajax
+				({
+				  type: "GET",
+				  url: "https://api.mendeley.com/profiles/me",
+				  async: false,
+				  headers: {
+					"Authorization": "Bearer " + token,
+				  },
+				  success: function (response){
+					alert('Successful comunication! Profile Details successfully received!!'); 
+					details = response;
+					updatePersonalInfoArea();
+				  }
+				});
+			}
+			
+			/////////////////////////////////////////////////////////////////////////////////////////////////
+			// Functions for updating the GUI (DOM Tree Manipulation)
+			/////////////////////////////////////////////////////////////////////////////////////////////////
+			
+			/**
+			 * This function is responsible for updating the personal
+			 * information area of the website with the personal information 
+			 * of the authorized user.
+			 */
+			function updatePersonalInfoArea() {
+				$("#name").html(details["first_name"]);
+				$("#surname").html(details["last_name"]);
+				$("#bio").html(details["biography"]);
+				
+				var education = details["education"];
+				var innerHTML = "";
+				
+				for (var i = 0; i < education.length; i++) {
+					var entry = education[i];
+					
+					var tableEntry = "<tr>" +
+										"<td>" + entry["start_date"] + "</td>" +
+										"<td>" + entry["end_date"] + "</td>" +
+										"<td>" + entry["degree"] + "</td>" +
+										"<td>" + entry["institution"] + "</td>" +
+									"</tr>";
+									
+					innerHTML += tableEntry;
+				}
+				
+				document.getElementById("edu-tab").innerHTML = innerHTML;
+			}
+			
+		</script>
+	</body>
 </html>
