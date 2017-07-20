@@ -1,0 +1,22 @@
+<html>
+	<body>
+		<div align="center">
+			<h1> Welcome to Mendeley Insights!!! </h1>
+			<hr/>
+			<button id="auth-but" onclick="mendeleyAuthFlow()">Authorize</button>
+		</div>
+		
+		<script>
+		
+			function mendeleyAuthFlow() {
+				//1. Construct the Mendeley OAuth authorization service URL
+				var url = "https://api.mendeley.com/oauth/authorize?client_id=4567&redirect_uri=http://localhost:8080/MendeleyInsights/&response_type=code&scope=all";
+				
+				//2. Redirect the user to the OAuth service page
+				window.location.href = url;
+			}
+		
+		</script>
+	</body>
+</html>
+
